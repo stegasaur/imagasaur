@@ -6,6 +6,35 @@ from io import BytesIO
 from datetime import datetime
 from urllib.parse import parse_qs
 
+# FastAPI for local development
+try:
+    from fastapi import FastAPI, UploadFile, File
+    from fastapi.responses import JSONResponse
+    fastapi_app = FastAPI()
+
+    @fastapi_app.post("/upload")
+    async def upload(file: UploadFile = File(...)):
+        contents = await file.read()
+        filename = file.filename
+        # For local dev, save to /tmp or a local dir
+        local_path = f"/tmp/{filename}"
+        with open(local_path, "wb") as f:
+            f.write(contents)
+        # Return a mock response similar to Lambda
+        return JSONResponse({
+            "message": "File uploaded successfully (local dev)",
+            "file_key": filename,
+            "status": "processing",
+            "thumbnail_url": f"/thumbnails/{filename}"
+        })
+except ImportError:
+    fastapi_app = None
+
+# For Uvicorn
+app = fastapi_app
+
+# --- Lambda handler below ---
+
 # Configure logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -16,7 +45,6 @@ s3_client = boto3.client('s3')
 # Environment variables
 UPLOADS_BUCKET = os.environ.get('UPLOADS_BUCKET')
 PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET')
-
 
 def generate_presigned_url(bucket_name, object_name, expiration=3600):
     """Generate a presigned URL for an S3 object."""
