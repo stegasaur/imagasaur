@@ -4,14 +4,16 @@ services:
   backend:
     build: ./backend
     ports:
-      - "5000:5000"
+      - "8000:5000"
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - UPLOAD_BUCKET=imagasaur-uploads-local
-      - PROCESSED_BUCKET=imagasaur-processed-local
+      - UPLOAD_BUCKET=imagasaur-uploads-dev-sowfp0ck
+      - PROCESSED_BUCKET=imagasaur-processed-dev-sowfp0ck
+      - AWS_PROFILE=stegasaur
     volumes:
       - ./backend:/app
+      - ~/.aws:/home/app/.aws:ro
     networks:
       - imagasaur-network
 
@@ -22,7 +24,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:5000
+      - REACT_APP_API_URL=http://localhost:8000
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
     volumes:
