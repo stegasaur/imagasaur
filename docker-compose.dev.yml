@@ -8,14 +8,12 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - UPLOAD_BUCKET=imagasaur-uploads
-      - PROCESSED_BUCKET=imagasaur-processed
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=us-east-1
+      - UPLOAD_BUCKET=imagasaur-uploads-dev-sowfp0ck
+      - PROCESSED_BUCKET=imagasaur-processed-dev-sowfp0ck
+      - AWS_PROFILE=stegasaur
     volumes:
       - ./backend:/app
+      - ~/.aws:/home/app/.aws:ro
     networks:
       - imagasaur-network
 
