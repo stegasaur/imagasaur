@@ -8,12 +8,14 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      - UPLOAD_BUCKET=imagasaur-uploads-dev-sowfp0ck
-      - PROCESSED_BUCKET=imagasaur-processed-dev-sowfp0ck
-      - AWS_PROFILE=stegasaur
+      - UPLOAD_BUCKET=imagasaur-uploads
+      - PROCESSED_BUCKET=imagasaur-processed
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
     volumes:
       - ./backend:/app
-      - ~/.aws:/home/app/.aws:ro
     networks:
       - imagasaur-network
 
@@ -36,6 +38,25 @@ services:
       - imagasaur-network
     stdin_open: true
     tty: true
+
+  localstack:
+    image: localstack/localstack:3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,lambda
+      - DEBUG=1
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - ./lambda:/lambda
+      - /var/run/docker.sock:/var/run/docker.sock
+      - localstack-data:/var/lib/localstack
+    networks:
+      - imagasaur-network
+
+volumes:
+  localstack-data:
 
 networks:
   imagasaur-network:

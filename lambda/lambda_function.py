@@ -1,9 +1,17 @@
-import json
-import boto3
+"""
+AWS Lambda function for image processing and thumbnail generation.
+
+This module handles S3 events triggered by image uploads, processes the images
+to create 100x100 thumbnails, and stores them in a processed bucket.
+"""
+
 import os
-from PIL import Image
+import json
 import io
 from urllib.parse import unquote_plus
+
+import boto3
+from PIL import Image
 
 s3_client = boto3.client('s3')
 

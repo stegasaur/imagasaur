@@ -59,48 +59,48 @@ resource "aws_s3_bucket_public_access_block" "processed" {
   restrict_public_buckets = true
 }
 
-# # S3 Bucket for frontend hosting
-# resource "aws_s3_bucket" "frontend" {
-#   bucket = "${var.project_name}-frontend-${local.environment}-${random_string.bucket_suffix.result}"
-# }
+# S3 Bucket for frontend hosting
+resource "aws_s3_bucket" "frontend" {
+  bucket = "${var.project_name}-frontend-${local.environment}-${random_string.bucket_suffix.result}"
+}
 
-# resource "aws_s3_bucket_public_access_block" "frontend" {
-#   bucket = aws_s3_bucket.frontend.id
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
 
-#   block_public_acls       = false
-#   block_public_policy     = false
-#   ignore_public_acls      = false
-#   restrict_public_buckets = false
-# }
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
 
-# resource "aws_s3_bucket_website_configuration" "frontend" {
-#   bucket = aws_s3_bucket.frontend.id
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
 
-#   index_document {
-#     suffix = "index.html"
-#   }
+  index_document {
+    suffix = "index.html"
+  }
 
-#   error_document {
-#     key = "index.html"
-#   }
-# }
+  error_document {
+    key = "index.html"
+  }
+}
 
-# resource "aws_s3_bucket_policy" "frontend" {
-#   bucket = aws_s3_bucket.frontend.id
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
 
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Sid       = "PublicReadGetObject"
-#         Effect    = "Allow"
-#         Principal = "*"
-#         Action    = "s3:GetObject"
-#         Resource  = "${aws_s3_bucket.frontend.arn}/*"
-#       },
-#     ]
-#   })
-# }
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadGetObject"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.frontend.arn}/*"
+      },
+    ]
+  })
+}
 
 # # CloudFront distribution for frontend
 # resource "aws_cloudfront_distribution" "frontend" {
@@ -157,96 +157,100 @@ resource "aws_s3_bucket_public_access_block" "processed" {
 #   comment = "OAI for ${var.project_name} frontend"
 # }
 
-# # IAM role for Lambda function
-# resource "aws_iam_role" "lambda_role" {
-#   name = "${var.project_name}-lambda-role"
+# IAM role for Lambda function
+resource "aws_iam_role" "lambda_role" {
+  name = "${var.project_name}-lambda-role"
 
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Action = "sts:AssumeRole"
-#         Effect = "Allow"
-#         Principal = {
-#           Service = "lambda.amazonaws.com"
-#         }
-#       }
-#     ]
-#   })
-# }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
 
-# # IAM policy for Lambda function
-# resource "aws_iam_role_policy" "lambda_policy" {
-#   name = "${var.project_name}-lambda-policy"
-#   role = aws_iam_role.lambda_role.id
+# IAM policy for Lambda function
+resource "aws_iam_role_policy" "lambda_policy" {
+  name = "${var.project_name}-lambda-policy"
+  role = aws_iam_role.lambda_role.id
 
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Effect = "Allow"
-#         Action = [
-#           "logs:CreateLogGroup",
-#           "logs:CreateLogStream",
-#           "logs:PutLogEvents"
-#         ]
-#         Resource = "arn:aws:logs:*:*:*"
-#       },
-#       {
-#         Effect = "Allow"
-#         Action = [
-#           "s3:GetObject"
-#         ]
-#         Resource = "${aws_s3_bucket.uploads.arn}/uploads/*"
-#       },
-#       {
-#         Effect = "Allow"
-#         Action = [
-#           "s3:PutObject"
-#         ]
-#         Resource = "${aws_s3_bucket.processed.arn}/processed/*"
-#       }
-#     ]
-#   })
-# }
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.uploads.arn}/uploads/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = "${aws_s3_bucket.processed.arn}/processed/*"
+      }
+    ]
+  })
+}
 
-# # Lambda function for image processing
-# resource "aws_lambda_function" "image_processor" {
-#   filename         = "../lambda/image_processor.zip"
-#   function_name    = "${var.project_name}-image-processor"
-#   role            = aws_iam_role.lambda_role.arn
-#   handler         = "lambda_function.lambda_handler"
-#   runtime         = "python3.13"
-#   timeout         = 30
-#   memory_size     = 512
+# ecr repository for lambda
+resource "aws_ecr_repository" "lambda" {
+  name = "${var.project_name}-image-processor"
+}
 
-#   environment {
-#     variables = {
-#       PROCESSED_BUCKET = aws_s3_bucket.processed.bucket
-#     }
-#   }
-# }
+# Lambda function for image processing
+resource "aws_lambda_function" "image_processor" {
+  image_uri = "${aws_ecr_repository.lambda.repository_url}:latest"
+  package_type = "Image"
+  function_name = "${var.project_name}-image-processor"
+  role = aws_iam_role.lambda_role.arn
+  timeout         = 30
+  memory_size     = 256
 
-# # S3 trigger for Lambda function
-# resource "aws_s3_bucket_notification" "uploads_notification" {
-#   bucket = aws_s3_bucket.uploads.id
+  environment {
+    variables = {
+      PROCESSED_BUCKET = aws_s3_bucket.processed.bucket
+    }
+  }
+}
 
-#   lambda_function {
-#     lambda_function_arn = aws_lambda_function.image_processor.arn
-#     events              = ["s3:ObjectCreated:*"]
-#     filter_prefix       = "uploads/"
-#   }
+# S3 trigger for Lambda function
+resource "aws_s3_bucket_notification" "uploads_notification" {
+  bucket = aws_s3_bucket.uploads.id
 
-#   depends_on = [aws_lambda_permission.allow_bucket]
-# }
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.image_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+  }
 
-# resource "aws_lambda_permission" "allow_bucket" {
-#   statement_id  = "AllowExecutionFromS3Bucket"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.image_processor.function_name
-#   principal     = "s3.amazonaws.com"
-#   source_arn    = aws_s3_bucket.uploads.arn
-# }
+  depends_on = [aws_lambda_permission.allow_bucket]
+}
+
+resource "aws_lambda_permission" "allow_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.image_processor.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.uploads.arn
+}
 
 # # API Gateway for backend API
 # resource "aws_api_gateway_rest_api" "main" {
@@ -330,55 +334,17 @@ resource "aws_s3_bucket_public_access_block" "processed" {
 #   }
 # }
 
-# # VPC and networking
-# resource "aws_vpc" "main" {
-#   cidr_block           = "10.0.0.0/16"
-#   enable_dns_hostnames = true
-#   enable_dns_support   = true
+# VPC and networking
+# VPC Module
+# module "vpc" {
+#   source = "./modules/vpc"
 
-#   tags = {
-#     Name = "${var.project_name}-vpc"
-#   }
-# }
-
-# resource "aws_subnet" "public" {
-#   count             = 2
-#   vpc_id            = aws_vpc.main.id
-#   cidr_block        = "10.0.${count.index + 1}.0/24"
-#   availability_zone = data.aws_availability_zones.available.names[count.index]
-
-#   map_public_ip_on_launch = true
-
-#   tags = {
-#     Name = "${var.project_name}-public-${count.index + 1}"
-#   }
-# }
-
-# resource "aws_internet_gateway" "main" {
-#   vpc_id = aws_vpc.main.id
-
-#   tags = {
-#     Name = "${var.project_name}-igw"
-#   }
-# }
-
-# resource "aws_route_table" "public" {
-#   vpc_id = aws_vpc.main.id
-
-#   route {
-#     cidr_block = "0.0.0.0/0"
-#     gateway_id = aws_internet_gateway.main.id
-#   }
-
-#   tags = {
-#     Name = "${var.project_name}-public-rt"
-#   }
-# }
-
-# resource "aws_route_table_association" "public" {
-#   count          = 2
-#   subnet_id      = aws_subnet.public[count.index].id
-#   route_table_id = aws_route_table.public.id
+#   vpc_name             = "${var.project_name}-${local.environment}"
+#   vpc_cidr             = "10.0.0.0/16"
+#   availability_zones   = data.aws_availability_zones.available.names
+#   public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+#   private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
+#   environment          = local.environment
 # }
 
 # resource "aws_security_group" "backend" {
@@ -427,4 +393,8 @@ output "uploads_bucket" {
 
 output "processed_bucket" {
   value = aws_s3_bucket.processed.bucket
+}
+
+output "lambda_ecr_repository_url" {
+  value = aws_ecr_repository.lambda.repository_url
 }
