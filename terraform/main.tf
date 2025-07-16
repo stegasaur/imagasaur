@@ -314,8 +314,8 @@ module "frontend" {
   source = "./modules/frontend"
   project_name = var.project_name
   environment = local.environment
-  github_owner = "your-github-username"
-  github_repo  = "your-frontend-repo"
+  github_owner = "stegasaur"
+  github_repo  = "imagasaur"
   github_branch = "main"
   buildspec = "../frontend/buildspec.yml"
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
