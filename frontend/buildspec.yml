@@ -3,7 +3,8 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      nodejs: 18
+      # update to latest supported node version
+      nodejs: 22
     commands:
       - npm ci
   build:
