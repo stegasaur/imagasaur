@@ -59,104 +59,6 @@ resource "aws_s3_bucket_public_access_block" "processed" {
   restrict_public_buckets = true
 }
 
-# S3 Bucket for frontend hosting
-resource "aws_s3_bucket" "frontend" {
-  bucket = "${var.project_name}-frontend-${local.environment}-${random_string.bucket_suffix.result}"
-}
-
-resource "aws_s3_bucket_public_access_block" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
-
-resource "aws_s3_bucket_website_configuration" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "index.html"
-  }
-}
-
-resource "aws_s3_bucket_policy" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.frontend.arn}/*"
-      },
-    ]
-  })
-}
-
-# # CloudFront distribution for frontend
-# resource "aws_cloudfront_distribution" "frontend" {
-#   origin {
-#     domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
-#     origin_id   = "S3-${aws_s3_bucket.frontend.bucket}"
-
-#     s3_origin_config {
-#       origin_access_identity = aws_cloudfront_origin_access_identity.frontend.cloudfront_access_identity_path
-#     }
-#   }
-
-#   enabled             = true
-#   is_ipv6_enabled    = true
-#   default_root_object = "index.html"
-
-#   default_cache_behavior {
-#     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-#     cached_methods   = ["GET", "HEAD"]
-#     target_origin_id = "S3-${aws_s3_bucket.frontend.bucket}"
-
-#     forwarded_values {
-#       query_string = false
-#       cookies {
-#         forward = "none"
-#       }
-#     }
-
-#     viewer_protocol_policy = "redirect-to-https"
-#     min_ttl                = 0
-#     default_ttl            = 3600
-#     max_ttl                = 86400
-#   }
-
-#   # Handle SPA routing
-#   custom_error_response {
-#     error_code         = 404
-#     response_code      = 200
-#     response_page_path = "/index.html"
-#   }
-
-#   restrictions {
-#     geo_restriction {
-#       restriction_type = "none"
-#     }
-#   }
-
-#   viewer_certificate {
-#     cloudfront_default_certificate = true
-#   }
-# }
-
-# resource "aws_cloudfront_origin_access_identity" "frontend" {
-#   comment = "OAI for ${var.project_name} frontend"
-# }
-
 # IAM role for Lambda function
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role"
@@ -224,6 +126,10 @@ resource "aws_lambda_function" "image_processor" {
   timeout         = 30
   memory_size     = 256
 
+  logging_config {
+    log_format = "JSON"
+  }
+
   environment {
     variables = {
       PROCESSED_BUCKET = aws_s3_bucket.processed.bucket
@@ -250,6 +156,11 @@ resource "aws_lambda_permission" "allow_bucket" {
   function_name = aws_lambda_function.image_processor.function_name
   principal     = "s3.amazonaws.com"
   source_arn    = aws_s3_bucket.uploads.arn
+}
+
+resource "aws_codestarconnections_connection" "github" {
+  name          = "shared-github-connection"
+  provider_type = "GitHub"
 }
 
 # # API Gateway for backend API
@@ -397,4 +308,15 @@ output "processed_bucket" {
 
 output "lambda_ecr_repository_url" {
   value = aws_ecr_repository.lambda.repository_url
+}
+
+module "frontend" {
+  source = "./modules/frontend"
+  project_name = var.project_name
+  environment = local.environment
+  github_owner = "your-github-username"
+  github_repo  = "your-frontend-repo"
+  github_branch = "main"
+  buildspec = "../frontend/buildspec.yml"
+  codestar_connection_arn = aws_codestarconnections_connection.github.arn
 }
