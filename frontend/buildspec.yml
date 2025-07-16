@@ -6,11 +6,13 @@ phases:
       # update to latest supported node version
       nodejs: 22
     commands:
+      - cd frontend
       - npm ci
   build:
     commands:
+      - cd frontend
       - npm run build
 artifacts:
-  base-directory: build
+  base-directory: frontend/build
   files:
     - '**/*'

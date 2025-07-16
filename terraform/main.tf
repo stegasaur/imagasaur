@@ -317,6 +317,6 @@ module "frontend" {
   github_owner = "stegasaur"
   github_repo  = "imagasaur"
   github_branch = "main"
-  buildspec = "../frontend/buildspec.yml"
+  buildspec = "frontend/buildspec.yml"
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
 }
