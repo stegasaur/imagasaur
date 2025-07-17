@@ -323,3 +323,23 @@ module "frontend" {
   buildspec = "frontend/buildspec.yml"
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
 }
+
+# -----------------------------------------------------------------------------
+# Image Processor CI/CD Pipeline
+# -----------------------------------------------------------------------------
+module "image_processor_pipeline" {
+  source                  = "./modules/image-processor-pipeline"
+  project_name            = var.project_name
+  environment             = local.environment
+
+  github_owner            = "stegasaur"
+  github_repo             = "imagasaur"
+  github_branch           = "main"
+
+  codestar_connection_arn = aws_codestarconnections_connection.github.arn
+
+  ecr_repository_name     = aws_ecr_repository.lambda.name
+  ecr_repository_arn      = aws_ecr_repository.lambda.arn
+
+  lambda_function_name    = aws_lambda_function.image_processor.function_name
+}
