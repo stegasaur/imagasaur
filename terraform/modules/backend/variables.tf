@@ -23,3 +23,13 @@ variable "container_port" {
   type        = number
   default     = 5000
 }
+
+variable "vpc_id" {
+  description = "ID of the VPC where backend resources will be deployed."
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "List of subnet IDs for ECS tasks."
+  type        = list(string)
+}

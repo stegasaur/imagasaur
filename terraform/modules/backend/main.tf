@@ -39,17 +39,11 @@ resource "aws_cloudwatch_log_group" "backend" {
 # Fetch region for logs
 data "aws_region" "current" {}
 
-data "aws_default_vpc" "default" {}
-
-data "aws_subnet_ids" "default" {
-  vpc_id = data.aws_default_vpc.default.id
-}
-
 # Security Group allowing inbound traffic to container port
 resource "aws_security_group" "backend" {
   name        = "${var.project_name}-${var.environment}-backend-sg"
   description = "Allow inbound traffic to the backend container port"
-  vpc_id      = data.aws_default_vpc.default.id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = var.container_port
@@ -118,7 +112,7 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = data.aws_subnet_ids.default.ids
+    subnets         = var.subnet_ids
     security_groups = [aws_security_group.backend.id]
     assign_public_ip = true
   }

@@ -331,6 +331,9 @@ module "backend" {
   environment       = local.environment
   uploads_bucket    = aws_s3_bucket.uploads.bucket
   processed_bucket  = aws_s3_bucket.processed.bucket
+
+  vpc_id      = module.vpc.vpc_id
+  subnet_ids  = module.vpc.public_subnet_ids
 }
 
 module "backend_pipeline" {
