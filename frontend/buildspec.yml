@@ -1,16 +1,20 @@
 version: 0.2
 
 phases:
+  pre_build:
+    commands:
+      - codebuild-breakpoint
   install:
     runtime-versions:
       # update to latest supported node version
       nodejs: 22
     commands:
+      - ls -la
       - cd frontend
       - npm ci
   build:
     commands:
-      - cd frontend
+      - codebuild-breakpoint
       - npm run build
 artifacts:
   base-directory: frontend/build
