@@ -1,4 +1,6 @@
 output "pipeline_url" {
   description = "Console URL for the Image Processor CodePipeline"
-  value       = aws_codepipeline.pipeline.id # placeholder, will update after pipeline resource is added.
+  value       = "https://console.aws.amazon.com/codesuite/codepipeline/pipelines/${aws_codepipeline.pipeline.name}/view?region=${data.aws_region.current.name}"
 }
+
+data "aws_region" "current" {}
