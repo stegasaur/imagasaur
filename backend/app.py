@@ -14,8 +14,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configure AWS
-endpoint_url = os.getenv("AWS_ENDPOINT_URL", None)
-s3_client = boto3.client('s3', endpoint_url=endpoint_url)
+s3_client = boto3.client('s3')
 UPLOAD_BUCKET = os.environ.get('UPLOAD_BUCKET', 'imagasaur-uploads')
 PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', 'imagasaur-processed')
 

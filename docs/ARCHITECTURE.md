@@ -68,7 +68,6 @@ Imagasaur is a serverless image processing application that automatically genera
 - **API Gateway**: For backend API routing
 - **CloudFront**: For frontend CDN
 - **VPC**: For backend networking
-  - Optionally, a VPC endpoint for S3 can be enabled by setting `create_s3_endpoint = true` in the VPC module. This allows private subnet resources to access S3 without traversing the public internet.
 
 ## Data Flow
 

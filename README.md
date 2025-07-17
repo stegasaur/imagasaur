@@ -47,7 +47,6 @@ docker-compose -f docker-compose.dev.yml up --build
 This will start:
 - The Flask backend
 - The React frontend
-- LocalStack (emulating AWS S3 and Lambda)
 - The Lambda function container
 
 ### 2. Set Up LocalStack (Buckets, Lambda, S3 Trigger)
@@ -124,17 +123,6 @@ You should see the generated thumbnail.
    # Or run backend/frontend directly for SSO
    ```
 
----
-
-## Local Lambda Testing Architecture
-
-```
-[Frontend] <-> [Backend] <-> [LocalStack S3] <-> [LocalStack Lambda]
-```
-
-- Uploads to S3 (LocalStack) trigger the Lambda (in Docker) for local, production-like testing.
-
----
 
 ## License
 
