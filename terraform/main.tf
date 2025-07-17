@@ -323,3 +323,30 @@ module "frontend" {
   buildspec = "frontend/buildspec.yml"
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
 }
+
+module "backend" {
+  source = "./modules/backend"
+
+  project_name      = var.project_name
+  environment       = local.environment
+  uploads_bucket    = aws_s3_bucket.uploads.bucket
+  processed_bucket  = aws_s3_bucket.processed.bucket
+}
+
+module "backend_pipeline" {
+  source = "./modules/ecs-pipeline"
+
+  project_name = var.project_name
+  environment  = local.environment
+
+  github_owner  = "stegasaur"
+  github_repo   = "imagasaur"
+  github_branch = "main"
+
+  ecr_repository_name = module.backend.ecr_repository_name
+  ecr_repository_arn  = module.backend.ecr_repository_arn
+  ecr_repository_url  = module.backend.ecr_repository_url
+
+  ecs_cluster_name = module.backend.ecs_cluster_name
+  ecs_service_name = module.backend.ecs_service_name
+}
