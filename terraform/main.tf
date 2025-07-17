@@ -247,35 +247,38 @@ resource "aws_codestarconnections_connection" "github" {
 
 # VPC and networking
 # VPC Module
-# module "vpc" {
-#   source = "./modules/vpc"
+module "vpc" {
+  source = "./modules/vpc"
 
-#   vpc_name             = "${var.project_name}-${local.environment}"
-#   vpc_cidr             = "10.0.0.0/16"
-#   availability_zones   = data.aws_availability_zones.available.names
-#   public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
-#   private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
-#   environment          = local.environment
-# }
+  vpc_name             = "${var.project_name}-${local.environment}"
+  vpc_cidr             = "10.0.0.0/16"
+  availability_zones   = data.aws_availability_zones.available.names
+  public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
+  environment          = local.environment
+  region               = var.aws_region
+  # Set to true to enable a VPC endpoint for S3
+  create_s3_endpoint   = false
+}
 
-# resource "aws_security_group" "backend" {
-#   name_prefix = "${var.project_name}-backend-"
-#   vpc_id      = aws_vpc.main.id
+resource "aws_security_group" "backend" {
+  name_prefix = "${var.project_name}-backend-"
+  vpc_id      = module.vpc.vpc_id
 
-#   ingress {
-#     from_port   = 80
-#     to_port     = 80
-#     protocol    = "tcp"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-# }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
 # Random string for unique bucket names
 resource "random_string" "bucket_suffix" {
@@ -289,10 +292,10 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# # Outputs
-# output "frontend_url" {
-#   value = aws_cloudfront_distribution.frontend.domain_name
-# }
+# Outputs
+output "frontend_url" {
+  value = module.frontend.frontend_cloudfront_distribution_domain_name
+}
 
 # output "api_gateway_url" {
 #   value = "${aws_api_gateway_stage.main.invoke_url}/upload"

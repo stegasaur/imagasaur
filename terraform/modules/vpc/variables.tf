@@ -27,3 +27,14 @@ variable "environment" {
   description = "Environment (dev, staging, prod)"
   type        = string
 }
+
+variable "create_s3_endpoint" {
+  description = "Whether to create a VPC endpoint for S3."
+  type        = bool
+  default     = false
+}
+
+variable "region" {
+  description = "AWS region for the VPC and resources."
+  type        = string
+}
