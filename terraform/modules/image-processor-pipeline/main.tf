@@ -29,11 +29,10 @@ resource "aws_iam_role_policy" "codebuild" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      # ECR permissions
+      # ECR permissions (repository-scoped)
       {
         Effect   = "Allow",
         Action   = [
-          "ecr:GetAuthorizationToken",
           "ecr:BatchGetImage",
           "ecr:CompleteLayerUpload",
           "ecr:GetDownloadUrlForLayer",
@@ -43,9 +42,10 @@ resource "aws_iam_role_policy" "codebuild" {
         ],
         Resource = var.ecr_repository_arn
       },
+      # ECR auth token (account-wide)
       {
         Effect   = "Allow",
-        Action   = "ecr:GetAuthorizationToken",
+        Action   = ["ecr:GetAuthorizationToken"],
         Resource = "*"
       },
       # S3 artifacts bucket access
@@ -73,11 +73,11 @@ resource "aws_iam_role_policy" "codebuild" {
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents"],
         Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:log-stream:*"
       },
-      # Lambda update permission
+      # Lambda update permission (scoped)
       {
         Effect   = "Allow",
         Action   = ["lambda:UpdateFunctionCode"],
-        Resource = "arn:aws:lambda:*:*:function:${var.lambda_function_name}"
+        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_function_name}"
       }
     ]
   })
@@ -186,12 +186,12 @@ resource "aws_iam_role_policy" "codepipeline" {
       {
         Effect = "Allow",
         Action = ["logs:CreateLogGroup"],
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/${aws_codepipeline.pipeline.name}:*"
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/${local.name_prefix}-pipeline:*"
       },
       {
         Effect = "Allow",
         Action = ["logs:CreateLogStream", "logs:PutLogEvents"],
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/${aws_codepipeline.pipeline.name}:log-stream:*"
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/${local.name_prefix}-pipeline:log-stream:*"
       }
     ]
   })
