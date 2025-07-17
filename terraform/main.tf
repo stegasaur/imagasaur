@@ -349,4 +349,6 @@ module "backend_pipeline" {
 
   ecs_cluster_name = module.backend.ecs_cluster_name
   ecs_service_name = module.backend.ecs_service_name
+
+  codestar_connection_arn = aws_codestarconnections_connection.github.arn
 }

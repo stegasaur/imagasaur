@@ -48,3 +48,8 @@ variable "ecs_service_name" {
   description = "ECS service name"
   type        = string
 }
+
+variable "codestar_connection_arn" {
+  description = "ARN of the existing AWS CodeStar Connections connection."
+  type        = string
+}
