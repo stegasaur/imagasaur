@@ -1,3 +1,7 @@
+locals {
+  shared_artifacts_arn = "arn:aws:s3:::${var.shared_artifacts_bucket_id}"
+}
+
 resource "aws_s3_bucket" "frontend" {
   bucket = "${var.project_name}-frontend-${var.environment}"
 }
@@ -131,7 +135,10 @@ resource "aws_iam_policy" "codepipeline_policy" {
           "s3:PutObjectAcl",
           "s3:PutObject"
         ],
-        Resource = "*",
+        Resource = [
+          local.shared_artifacts_arn,
+          "${local.shared_artifacts_arn}/*"
+        ],
         Effect = "Allow"
       },
       {
@@ -171,28 +178,6 @@ resource "aws_iam_policy" "codepipeline_policy" {
 resource "aws_iam_role_policy_attachment" "codepipeline_policy_attachment" {
   role       = aws_iam_role.codepipeline_role.name
   policy_arn = aws_iam_policy.codepipeline_policy.arn
-}
-
-resource "aws_s3_bucket" "codepipeline_artifacts" {
-  bucket = "${var.project_name}-${var.environment}-frontend-pipeline-artifacts"
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-frontend-pipeline-artifacts"
-    Environment = var.environment
-  }
-}
-
-resource "aws_s3_bucket_ownership_controls" "codepipeline_artifacts_ownership" {
-  bucket = aws_s3_bucket.codepipeline_artifacts.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-resource "aws_s3_bucket_acl" "codepipeline_artifacts_acl" {
-  depends_on = [aws_s3_bucket_ownership_controls.codepipeline_artifacts_ownership]
-  bucket     = aws_s3_bucket.codepipeline_artifacts.id
-  acl        = "private"
 }
 
 resource "aws_iam_role" "codebuild_role" {
@@ -243,8 +228,8 @@ resource "aws_iam_policy" "codebuild_policy" {
           "s3:GetBucketVersioning"
         ],
         Resource = [
-          aws_s3_bucket.codepipeline_artifacts.arn,
-          "${aws_s3_bucket.codepipeline_artifacts.arn}/*",
+          local.shared_artifacts_arn,
+          "${local.shared_artifacts_arn}/*",
           "arn:aws:s3:::${var.project_name}-frontend-${var.environment}",
           "arn:aws:s3:::${var.project_name}-frontend-${var.environment}/*"
         ]
@@ -300,7 +285,7 @@ resource "aws_codepipeline" "frontend" {
   pipeline_type = "V2"
 
   artifact_store {
-    location = aws_s3_bucket.codepipeline_artifacts.bucket
+    location = var.shared_artifacts_bucket_id
     type     = "S3"
   }
 

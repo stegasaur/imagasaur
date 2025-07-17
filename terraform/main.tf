@@ -280,7 +280,15 @@ resource "aws_security_group" "backend" {
   }
 }
 
-# Random string for unique bucket names
+resource "aws_s3_bucket" "codepipeline_artifacts" {
+  bucket = "${var.project_name}-${local.environment}-shared-pipeline-artifacts-${random_string.bucket_suffix.result}"
+}
+
+resource "aws_s3_bucket_versioning" "codepipeline_artifacts" {
+  bucket = aws_s3_bucket.codepipeline_artifacts.id
+  versioning_configuration { status = "Enabled" }
+}
+
 resource "random_string" "bucket_suffix" {
   length  = 8
   special = false
@@ -322,6 +330,7 @@ module "frontend" {
   github_branch = "main"
   buildspec = "frontend/buildspec.yml"
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
+  shared_artifacts_bucket_id  = aws_s3_bucket.codepipeline_artifacts.id
 }
 
 # -----------------------------------------------------------------------------
@@ -342,4 +351,5 @@ module "image_processor_pipeline" {
   ecr_repository_arn      = aws_ecr_repository.lambda.arn
 
   lambda_function_name    = aws_lambda_function.image_processor.function_name
+  shared_artifacts_bucket_id  = aws_s3_bucket.codepipeline_artifacts.id
 }

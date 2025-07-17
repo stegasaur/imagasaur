@@ -43,3 +43,8 @@ variable "lambda_function_name" {
   description = "Name of the target Lambda function to update"
   type        = string
 }
+
+variable "shared_artifacts_bucket_id" {
+  description = "ID (name) of the shared S3 bucket for CodePipeline artifacts"
+  type        = string
+}

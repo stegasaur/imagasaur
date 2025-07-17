@@ -19,7 +19,7 @@ variable "github_repo" {
 }
 
 variable "github_branch" {
-  description = "GitHub repository branch for frontend."
+  description = "Branch to track for the pipeline"
   type        = string
   default     = "main"
 }
@@ -31,6 +31,11 @@ variable "buildspec" {
 }
 
 variable "codestar_connection_arn" {
-  description = "ARN of the shared AWS CodeStar Connections connection."
+  description = "ARN of the shared CodeStar Connections connection"
+  type        = string
+}
+
+variable "shared_artifacts_bucket_id" {
+  description = "ID (name) of the shared S3 bucket for CodePipeline artifacts"
   type        = string
 }

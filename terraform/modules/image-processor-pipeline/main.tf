@@ -1,7 +1,8 @@
 # Image Processor CodePipeline module
 
 locals {
-  name_prefix = "${var.project_name}-${var.environment}-image-processor"
+  name_prefix            = "${var.project_name}-${var.environment}-image-processor"
+  shared_artifacts_arn = "arn:aws:s3:::${var.shared_artifacts_bucket_id}"
 }
 
 ############################################################
@@ -58,8 +59,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "s3:GetBucketVersioning"
         ],
         Resource = [
-          "${aws_s3_bucket.artifacts.arn}",
-          "${aws_s3_bucket.artifacts.arn}/*"
+          local.shared_artifacts_arn,
+          "${local.shared_artifacts_arn}/*"
         ]
       },
       # CloudWatch Logs
@@ -160,8 +161,8 @@ resource "aws_iam_role_policy" "codepipeline" {
           "s3:PutObject"
         ],
         Resource = [
-          aws_s3_bucket.artifacts.arn,
-          "${aws_s3_bucket.artifacts.arn}/*"
+          local.shared_artifacts_arn,
+          "${local.shared_artifacts_arn}/*"
         ]
       },
       # CodeBuild
@@ -200,20 +201,8 @@ resource "aws_iam_role_policy" "codepipeline" {
 ############################################################
 # ARTIFACT BUCKET
 ############################################################
-resource "aws_s3_bucket" "artifacts" {
-  bucket = "${local.name_prefix}-artifacts-${random_string.bucket_suffix.result}"
-}
+# NO LONGER NEEDED, USING SHARED BUCKET FROM ROOT MODULE
 
-resource "aws_s3_bucket_versioning" "artifacts" {
-  bucket = aws_s3_bucket.artifacts.id
-  versioning_configuration { status = "Enabled" }
-}
-
-resource "random_string" "bucket_suffix" {
-  length  = 6
-  special = false
-  upper   = false
-}
 
 ############################################################
 # CODEPIPELINE
@@ -224,7 +213,7 @@ resource "aws_codepipeline" "pipeline" {
   pipeline_type = "V2"
 
   artifact_store {
-    location = aws_s3_bucket.artifacts.bucket
+    location = var.shared_artifacts_bucket_id
     type     = "S3"
   }
 
@@ -267,3 +256,8 @@ resource "aws_codepipeline" "pipeline" {
     Project     = var.project_name
   }
 }
+
+# Get current AWS region
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
