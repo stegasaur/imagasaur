@@ -9,7 +9,7 @@ phases:
       # update to latest supported node version
       nodejs: 22
     commands:
-      - ls -la
+      - codebuild-breakpoint
       - cd frontend
       - npm ci
   build:
