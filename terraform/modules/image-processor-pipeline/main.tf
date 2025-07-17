@@ -65,8 +65,13 @@ resource "aws_iam_role_policy" "codebuild" {
       # CloudWatch Logs
       {
         Effect   = "Allow",
-        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-        Resource = "arn:aws:logs:*:*:*"
+        Action   = ["logs:CreateLogGroup"],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:*"
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:log-stream:*"
       },
       # Lambda update permission
       {
@@ -180,8 +185,13 @@ resource "aws_iam_role_policy" "codepipeline" {
       # CloudWatch Logs permissions for pipeline
       {
         Effect = "Allow",
-        Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-        Resource = "arn:aws:logs:*:*:*"
+        Action = ["logs:CreateLogGroup"],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/${aws_codepipeline.pipeline.name}:*"
+      },
+      {
+        Effect = "Allow",
+        Action = ["logs:CreateLogStream", "logs:PutLogEvents"],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/${aws_codepipeline.pipeline.name}:log-stream:*"
       }
     ]
   })
