@@ -5,6 +5,8 @@ phases:
     commands:
       - echo "Logging in to Amazon ECR..."
       - aws --version
+      - export AWS_REGION=$(aws configure get region)
+      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - $(aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.$AWS_REGION.amazonaws.com)
       - COMMIT_SHA=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.$AWS_REGION.amazonaws.com/${ECR_REPO}:$COMMIT_SHA
