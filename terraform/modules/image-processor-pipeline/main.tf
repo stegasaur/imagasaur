@@ -109,6 +109,10 @@ resource "aws_codebuild_project" "image_processor" {
       name  = "LAMBDA_NAME"
       value = var.lambda_function_name
     }
+    environment_variable {
+      name  = "AWS_ACCOUNT_ID"
+      value = data.aws_caller_identity.current.account_id
+    }
   }
 
   source {
