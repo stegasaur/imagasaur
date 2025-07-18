@@ -50,6 +50,41 @@ resource "aws_iam_role_policy" "codebuild_ecr" {
           "ecr:DescribeRepositories"
         ],
         Resource = var.ecr_repository_arn
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:GetObjectVersion",
+          "s3:GetBucketVersioning"
+        ],
+        Resource = [
+          local.shared_artifacts_arn,
+          "${local.shared_artifacts_arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogGroup"
+        ],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:log-stream:*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "lambda:UpdateFunctionCode"
+        ],
+        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_function_name}"
       }
     ]
   })

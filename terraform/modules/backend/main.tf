@@ -1,3 +1,7 @@
+locals {
+  container_name = "backend"
+}
+
 # ECR repository for backend images
 resource "aws_ecr_repository" "backend" {
   name = "${var.project_name}-backend"
@@ -74,6 +78,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -108,14 +119,31 @@ resource "aws_lb_target_group" "backend" {
 }
 
 # Listener
-resource "aws_lb_listener" "backend" {
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.backend.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
+  certificate_arn   = var.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+}
+
+resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.backend.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -130,7 +158,7 @@ resource "aws_ecs_task_definition" "backend" {
 
   container_definitions = jsonencode([
     {
-      name      = "backend"
+      name      = local.container_name
       image     = "${aws_ecr_repository.backend.repository_url}:latest"
       essential = true
       portMappings = [
@@ -148,6 +176,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "PROCESSED_BUCKET"
           value = var.processed_bucket
+        },
+        {
+          name  = "FLASK_ENV"
+          value = "production"
         }
       ]
       logConfiguration = {
@@ -173,7 +205,7 @@ resource "aws_ecs_service" "backend" {
   network_configuration {
     subnets         = var.private_subnet_ids
     security_groups = [aws_security_group.backend.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
 
   load_balancer {
@@ -184,6 +216,6 @@ resource "aws_ecs_service" "backend" {
 
   depends_on = [
     aws_iam_role_policy_attachment.task_execution_role_attachment,
-    aws_lb_listener.backend
+    aws_lb_listener.https
   ]
 }

@@ -49,6 +49,11 @@ variable "ecs_service_name" {
   type        = string
 }
 
+variable "ecs_container_name" {
+  description = "Name of the container in the ECS task definition to update"
+  type        = string
+}
+
 variable "codestar_connection_arn" {
   description = "ARN of the existing AWS CodeStar Connections connection."
   type        = string

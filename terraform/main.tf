@@ -17,6 +17,76 @@ locals {
   environment = terraform.workspace
 }
 
+# -----------------------------------------------------------------------------
+# DNS Records
+# -----------------------------------------------------------------------------
+
+# Route53 Hosted Zone
+data "aws_route53_zone" "main" {
+  name = "imagasaur.com"
+}
+
+# DNS Record for frontend
+resource "aws_route53_record" "frontend" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "www.imagasaur.com"
+  type    = "A"
+
+  alias {
+    name                   = module.frontend.frontend_cloudfront_distribution_domain_name
+    zone_id                = module.frontend.frontend_cloudfront_distribution_hosted_zone_id
+    evaluate_target_health = true
+  }
+}
+
+# DNS Record for backend
+resource "aws_route53_record" "backend" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "api.imagasaur.com"
+  type    = "A"
+
+  alias {
+    name                   = module.backend.load_balancer_dns_name
+    zone_id                = module.backend.load_balancer_zone_id
+    evaluate_target_health = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Certificate
+# -----------------------------------------------------------------------------
+
+# Wildcard certificate for all subdomains
+resource "aws_acm_certificate" "wildcard" {
+  domain_name = "*.imagasaur.com"
+  validation_method = "DNS"
+  subject_alternative_names = ["imagasaur.com", "www.imagasaur.com", "api.imagasaur.com"]
+}
+
+# DNS Record for certificate validation
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.wildcard.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.main.zone_id
+}
+
+resource "aws_acm_certificate_validation" "wildcard" {
+  certificate_arn         = aws_acm_certificate.wildcard.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
 # S3 Bucket for uploads
 resource "aws_s3_bucket" "uploads" {
   bucket = "${var.project_name}-uploads-${local.environment}-${random_string.bucket_suffix.result}"
@@ -163,88 +233,6 @@ resource "aws_codestarconnections_connection" "github" {
   provider_type = "GitHub"
 }
 
-# # API Gateway for backend API
-# resource "aws_api_gateway_rest_api" "main" {
-#   name = "${var.project_name}-api"
-# }
-
-# resource "aws_api_gateway_resource" "upload" {
-#   rest_api_id = aws_api_gateway_rest_api.main.id
-#   parent_id   = aws_api_gateway_rest_api.main.root_resource_id
-#   path_part   = "upload"
-# }
-
-# resource "aws_api_gateway_method" "upload_post" {
-#   rest_api_id   = aws_api_gateway_rest_api.main.id
-#   resource_id   = aws_api_gateway_resource.upload.id
-#   http_method   = "POST"
-#   authorization = "NONE"
-# }
-
-# resource "aws_api_gateway_integration" "upload_integration" {
-#   rest_api_id = aws_api_gateway_rest_api.main.id
-#   resource_id = aws_api_gateway_resource.upload.id
-#   http_method = aws_api_gateway_method.upload_post.http_method
-
-#   integration_http_method = "POST"
-#   type                   = "HTTP_PROXY"
-#   uri                    = "http://${aws_lb.backend.dns_name}/upload"
-# }
-
-# resource "aws_api_gateway_deployment" "main" {
-#   rest_api_id = aws_api_gateway_rest_api.main.id
-
-#   depends_on = [
-#     aws_api_gateway_method.upload_post,
-#     aws_api_gateway_integration.upload_integration,
-#   ]
-# }
-
-# resource "aws_api_gateway_stage" "main" {
-#   deployment_id = aws_api_gateway_deployment.main.id
-#   rest_api_id   = aws_api_gateway_rest_api.main.id
-#   stage_name    = "prod"
-# }
-
-# # Application Load Balancer for backend
-# resource "aws_lb" "backend" {
-#   name               = "${var.project_name}-backend-alb"
-#   internal           = false
-#   load_balancer_type = "application"
-#   security_groups    = [aws_security_group.backend.id]
-#   subnets            = aws_subnet.public[*].id
-# }
-
-# resource "aws_lb_target_group" "backend" {
-#   name     = "${var.project_name}-backend-tg"
-#   port     = 80
-#   protocol = "HTTP"
-#   vpc_id   = aws_vpc.main.id
-
-#   health_check {
-#     enabled             = true
-#     healthy_threshold   = 2
-#     interval            = 30
-#     matcher             = "200"
-#     path                = "/health"
-#     port                = "traffic-port"
-#     protocol            = "HTTP"
-#     timeout             = 5
-#     unhealthy_threshold = 2
-#   }
-# }
-
-# resource "aws_lb_listener" "backend" {
-#   load_balancer_arn = aws_lb.backend.arn
-#   port              = "80"
-#   protocol          = "HTTP"
-
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.backend.arn
-#   }
-# }
-
 # VPC and networking
 # VPC Module
 module "vpc" {
@@ -305,9 +293,6 @@ output "frontend_url" {
   value = module.frontend.frontend_cloudfront_distribution_domain_name
 }
 
-# output "api_gateway_url" {
-#   value = "${aws_api_gateway_stage.main.invoke_url}/upload"
-# }
 
 output "uploads_bucket" {
   value = aws_s3_bucket.uploads.bucket
@@ -331,6 +316,9 @@ module "frontend" {
   buildspec = "frontend/buildspec.yml"
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
   shared_artifacts_bucket_id  = aws_s3_bucket.codepipeline_artifacts.id
+  certificate_arn = aws_acm_certificate.wildcard.arn
+  domain_name = "www.imagasaur.com"
+  api_domain_name = "api.imagasaur.com"
 }
 
 # -----------------------------------------------------------------------------
@@ -365,6 +353,8 @@ module "backend" {
   vpc_id              = module.vpc.vpc_id
   private_subnet_ids  = module.vpc.private_subnet_ids
   public_subnet_ids   = module.vpc.public_subnet_ids
+
+  certificate_arn = aws_acm_certificate.wildcard.arn
 }
 
 module "backend_pipeline" {
@@ -385,4 +375,5 @@ module "backend_pipeline" {
   ecs_service_name = module.backend.ecs_service_name
 
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
+  ecs_container_name = module.backend.container_name
 }

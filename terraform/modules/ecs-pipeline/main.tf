@@ -149,7 +149,113 @@ resource "aws_s3_bucket_acl" "codepipeline_bucket_acl" {
   acl        = "private"
 }
 
-# AWS CodePipeline
+# IAM Role for CodeBuild
+resource "aws_iam_role" "codebuild" {
+  name = "${var.project_name}-${var.environment}-codebuild-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = { Service = "codebuild.amazonaws.com" },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "codebuild" {
+  name = "${var.project_name}-${var.environment}-codebuild-policy"
+  role = aws_iam_role.codebuild.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      # ECR permissions
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart"
+        ],
+        Resource = "*"
+      },
+      # S3 access for CodePipeline artifacts
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetBucketVersioning",
+          "s3:PutObject"
+        ],
+        Resource = [
+          aws_s3_bucket.codepipeline_bucket.arn,
+          "${aws_s3_bucket.codepipeline_bucket.arn}/*"
+        ]
+      },
+      # CloudWatch Logs
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/*"
+      },
+      # ECS permissions (for imagedefinitions.json)
+      {
+        Effect = "Allow",
+        Action = [
+          "ecs:DescribeTaskDefinition",
+          "ecs:RegisterTaskDefinition"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_codebuild_project" "backend" {
+  name          = "${var.project_name}-${var.environment}-backend-build"
+  service_role  = aws_iam_role.codebuild.arn
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+  environment {
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/standard:7.0"
+    type                        = "LINUX_CONTAINER"
+    privileged_mode             = true
+    environment_variable {
+      name  = "AWS_ACCOUNT_ID"
+      value = data.aws_caller_identity.current.account_id
+    }
+    environment_variable {
+      name  = "ECR_REPO"
+      value = var.ecr_repository_name
+    }
+    environment_variable {
+      name  = "ECS_CONTAINER_NAME"
+      value = var.ecs_container_name
+    }
+  }
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = "backend/buildspec.yml"
+  }
+  logs_config {
+    cloudwatch_logs {
+      group_name  = "/aws/codebuild/${var.project_name}-${var.environment}-backend-build"
+      stream_name = "build"
+    }
+  }
+}
+
+# Update pipeline stages
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-${var.environment}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
@@ -184,17 +290,16 @@ resource "aws_codepipeline" "pipeline" {
     name = "Build"
 
     action {
-      name             = "BuildAndPushImage"
+      name             = "BuildImage"
       category         = "Build"
       owner            = "AWS"
-      provider         = "ECRBuildAndPublish"
+      provider         = "CodeBuild"
       input_artifacts  = ["source_output"]
-      output_artifacts = []
+      output_artifacts = ["imagedefinitions"]
       version          = "1"
 
       configuration = {
-        "ECRRepositoryName": var.ecr_repository_name
-        "ImageTags": "latest, ${var.environment}-${var.github_branch}"
+        ProjectName = aws_codebuild_project.backend.name
       }
     }
   }
@@ -207,7 +312,7 @@ resource "aws_codepipeline" "pipeline" {
       category        = "Deploy"
       owner           = "AWS"
       provider        = "ECS"
-      input_artifacts  = ["source_output"]
+      input_artifacts = ["imagedefinitions"]
       version         = "1"
 
       configuration = {

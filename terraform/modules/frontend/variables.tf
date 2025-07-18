@@ -39,3 +39,18 @@ variable "shared_artifacts_bucket_id" {
   description = "ID (name) of the shared S3 bucket for CodePipeline artifacts"
   type        = string
 }
+
+variable "certificate_arn" {
+  description = "ARN of the certificate for the domain"
+  type        = string
+}
+
+variable "domain_name" {
+  description = "Domain name for the frontend"
+  type        = string
+}
+
+variable "api_domain_name" {
+  description = "Domain name for the API"
+  type        = string
+}

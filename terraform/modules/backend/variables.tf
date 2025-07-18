@@ -38,3 +38,8 @@ variable "public_subnet_ids" {
   description = "List of public subnet IDs for Load Balancer."
   type        = list(string)
 }
+
+variable "certificate_arn" {
+  description = "ARN of the certificate for the domain"
+  type        = string
+}
