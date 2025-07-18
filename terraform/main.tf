@@ -353,3 +353,36 @@ module "image_processor_pipeline" {
   lambda_function_name    = aws_lambda_function.image_processor.function_name
   shared_artifacts_bucket_id  = aws_s3_bucket.codepipeline_artifacts.id
 }
+
+module "backend" {
+  source = "./modules/backend"
+
+  project_name      = var.project_name
+  environment       = local.environment
+  uploads_bucket    = aws_s3_bucket.uploads.bucket
+  processed_bucket  = aws_s3_bucket.processed.bucket
+
+  vpc_id              = module.vpc.vpc_id
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  public_subnet_ids   = module.vpc.public_subnet_ids
+}
+
+module "backend_pipeline" {
+  source = "./modules/ecs-pipeline"
+
+  project_name = var.project_name
+  environment  = local.environment
+
+  github_owner  = "stegasaur"
+  github_repo   = "imagasaur"
+  github_branch = "main"
+
+  ecr_repository_name = module.backend.ecr_repository_name
+  ecr_repository_arn  = module.backend.ecr_repository_arn
+  ecr_repository_url  = module.backend.ecr_repository_url
+
+  ecs_cluster_name = module.backend.ecs_cluster_name
+  ecs_service_name = module.backend.ecs_service_name
+
+  codestar_connection_arn = aws_codestarconnections_connection.github.arn
+}

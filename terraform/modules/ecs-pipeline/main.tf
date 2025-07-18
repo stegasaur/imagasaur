@@ -1,10 +1,5 @@
 # Pipeline module to manage the CI/CD pipeline using AWS CodePipeline
 
-resource "aws_codestarconnections_connection" "github" {
-  name          = "stegasaur-github-connection"
-  provider_type = "GitHub"
-}
-
 # IAM Role for CodePipeline
 resource "aws_iam_role" "codepipeline_role" {
   name = "${var.project_name}-${var.environment}-codepipeline-role"
@@ -76,7 +71,7 @@ resource "aws_iam_policy" "codepipeline_policy" {
         Action = [
           "codestar-connections:UseConnection"
         ],
-        Resource = aws_codestarconnections_connection.github.arn,
+        Resource = var.codestar_connection_arn,
         Effect   = "Allow"
       },
       # add permissions for ecr
@@ -178,7 +173,7 @@ resource "aws_codepipeline" "pipeline" {
 
       # Use CodeConnections for GitHub
       configuration = {
-        ConnectionArn = aws_codestarconnections_connection.github.arn
+        ConnectionArn = var.codestar_connection_arn
         FullRepositoryId = "${var.github_owner}/${var.github_repo}"
         BranchName       = var.github_branch
       }
