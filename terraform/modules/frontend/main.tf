@@ -75,12 +75,14 @@ resource "aws_cloudfront_distribution" "frontend" {
       cookies {
         forward = "none"
       }
+      headers = ["Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"]
     }
 
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
     max_ttl                = 86400
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
   }
 
   custom_error_response {
@@ -99,6 +101,26 @@ resource "aws_cloudfront_distribution" "frontend" {
     acm_certificate_arn = var.certificate_arn
     ssl_support_method = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
+  }
+}
+
+resource "aws_cloudfront_response_headers_policy" "cors" {
+  name = "frontend-cors-policy"
+  cors_config {
+    origin_override = true
+    access_control_allow_origins {
+      items = [
+        "https://www.imagasaur.com",
+        "https://api.imagasaur.com"
+      ]
+    }
+    access_control_allow_headers {
+      items = ["*"]
+    }
+    access_control_allow_methods {
+      items = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"]
+    }
+    access_control_allow_credentials = false
   }
 }
 
@@ -142,7 +164,9 @@ resource "aws_iam_policy" "codepipeline_policy" {
         ],
         Resource = [
           local.shared_artifacts_arn,
-          "${local.shared_artifacts_arn}/*"
+          "${local.shared_artifacts_arn}/*",
+          "arn:aws:s3:::${var.project_name}-frontend-${var.environment}",
+          "arn:aws:s3:::${var.project_name}-frontend-${var.environment}/*"
         ],
         Effect = "Allow"
       },

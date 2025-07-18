@@ -84,15 +84,127 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
+# s3 endpoint
 resource "aws_vpc_endpoint" "s3" {
-  count             = var.create_s3_endpoint ? 1 : 0
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = aws_route_table.private[*].id
+}
+
+# security group to allow access to vpc endpoints from everything in vpc
+resource "aws_security_group" "vpc_endpoint" {
+  name        = "${var.vpc_name}-vpc-endpoint"
+  description = "Allow access to vpc endpoints from everything in vpc"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ECR DKR endpoint
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
 
   tags = {
-    Name        = "${var.vpc_name}-s3-endpoint"
+    Name        = "${var.vpc_name}-ecr-dkr-endpoint"
+    Environment = var.environment
+  }
+}
+
+# ECR API endpoint
+# resource "aws_vpc_endpoint" "ecr_api" {
+#   vpc_id            = aws_vpc.main.id
+#   service_name      = "com.amazonaws.${var.region}.ecr.api"
+#   vpc_endpoint_type = "Interface"
+#   subnet_ids        = aws_subnet.private[*].id
+#   security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+#   private_dns_enabled = true
+
+#   tags = {
+#     Name        = "${var.vpc_name}-ecr-api-endpoint"
+#     Environment = var.environment
+#   }
+# }
+
+# iam endpoints
+# resource "aws_vpc_endpoint" "iam" {
+#   vpc_id            = aws_vpc.main.id
+#   service_name      = "com.amazonaws.iam"
+#   vpc_endpoint_type = "Interface"
+#   subnet_ids        = aws_subnet.private[*].id
+#   security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+#   private_dns_enabled = true
+
+#   tags = {
+#     Name        = "${var.vpc_name}-iam-endpoint"
+#     Environment = var.environment
+#   }
+# }
+
+# ssm endpoint
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "${var.vpc_name}-ssm-endpoint"
+    Environment = var.environment
+  }
+}
+
+# ssm messages endpoint
+resource "aws_vpc_endpoint" "ssm_messages" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ssmmessages"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "${var.vpc_name}-ssm-messages-endpoint"
+    Environment = var.environment
+  }
+}
+
+# sts endpoint
+resource "aws_vpc_endpoint" "sts" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.sts"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "${var.vpc_name}-sts-endpoint"
     Environment = var.environment
   }
 }

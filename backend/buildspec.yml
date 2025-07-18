@@ -12,7 +12,7 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $REPO_URI:$IMAGE_TAG .
+      - docker build -t $REPO_URI:$IMAGE_TAG -f ./backend/Dockerfile ./backend
       - docker tag $REPO_URI:$IMAGE_TAG $REPO_URI:latest
   post_build:
     commands:

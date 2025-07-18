@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
+# configure cors
+CORS(app, origins=["https://www.imagasaur.com", "https://api.imagasaur.com", "http://localhost:3000"])
+
+
 # Configure AWS
 s3_client = boto3.client('s3')
 UPLOAD_BUCKET = os.environ.get('UPLOAD_BUCKET', 'imagasaur-uploads')

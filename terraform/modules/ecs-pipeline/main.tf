@@ -27,25 +27,11 @@ resource "aws_iam_role" "codepipeline_role" {
 # IAM Policy for CodePipeline
 resource "aws_iam_policy" "codepipeline_policy" {
   name        = "${var.project_name}-${var.environment}-codepipeline-policy"
-  description = "Policy for CodePipeline"
+  description = "Policy for CodePipeline to trigger codebuild and deploy to ECS"
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      {
-        Action = [
-          "s3:GetObject",
-          "s3:GetObjectVersion",
-          "s3:GetBucketVersioning",
-          "s3:PutObjectAcl",
-          "s3:PutObject"
-        ],
-        Resource = [
-          aws_s3_bucket.codepipeline_bucket.arn,
-          "${aws_s3_bucket.codepipeline_bucket.arn}/*"
-        ],
-        Effect = "Allow"
-      },
       {
         Action = [
           "ecs:DescribeServices",
@@ -113,7 +99,29 @@ resource "aws_iam_policy" "codepipeline_policy" {
         Resource = [
           "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codepipeline/*"
         ]
-      }
+      },
+      # add permissions for triggering codebuild
+      {
+        Action = ["codebuild:BatchGetBuilds", "codebuild:StartBuild"],
+        Resource = [
+          aws_codebuild_project.backend.arn
+        ],
+        Effect = "Allow"
+      },
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetBucketVersioning",
+          "s3:PutObjectAcl",
+          "s3:PutObject"
+        ],
+        Resource = [
+          aws_s3_bucket.codepipeline_bucket.arn,
+          "${aws_s3_bucket.codepipeline_bucket.arn}/*"
+        ],
+        Effect = "Allow"
+      },
     ]
   })
 }
@@ -178,7 +186,8 @@ resource "aws_iam_role_policy" "codebuild" {
           "ecr:BatchGetImage",
           "ecr:PutImage",
           "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart"
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
         ],
         Resource = "*"
       },
