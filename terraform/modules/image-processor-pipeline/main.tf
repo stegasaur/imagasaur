@@ -6,131 +6,6 @@ locals {
 }
 
 ############################################################
-# IAM ROLE FOR CODEBUILD
-############################################################
-resource "aws_iam_role" "codebuild" {
-  name = "${local.name_prefix}-codebuild-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = { Service = "codebuild.amazonaws.com" },
-        Action    = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "codebuild" {
-  name   = "${local.name_prefix}-codebuild-policy"
-  role   = aws_iam_role.codebuild.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      # ECR permissions (repository-scoped)
-      {
-        Effect   = "Allow",
-        Action   = [
-          "ecr:BatchGetImage",
-          "ecr:CompleteLayerUpload",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:InitiateLayerUpload",
-          "ecr:PutImage",
-          "ecr:UploadLayerPart"
-        ],
-        Resource = var.ecr_repository_arn
-      },
-      # ECR auth token (account-wide)
-      {
-        Effect   = "Allow",
-        Action   = ["ecr:GetAuthorizationToken"],
-        Resource = "*"
-      },
-      # S3 artifacts bucket access
-      {
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:GetObjectVersion",
-          "s3:GetBucketVersioning"
-        ],
-        Resource = [
-          local.shared_artifacts_arn,
-          "${local.shared_artifacts_arn}/*"
-        ]
-      },
-      # CloudWatch Logs
-      {
-        Effect   = "Allow",
-        Action   = ["logs:CreateLogGroup"],
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:*"
-      },
-      {
-        Effect   = "Allow",
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"],
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:log-stream:*"
-      },
-      # Lambda update permission (scoped)
-      {
-        Effect   = "Allow",
-        Action   = ["lambda:UpdateFunctionCode"],
-        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_function_name}"
-      }
-    ]
-  })
-}
-
-############################################################
-# CODEBUILD PROJECT
-############################################################
-resource "aws_codebuild_project" "image_processor" {
-  name          = "${local.name_prefix}-build"
-  description   = "Builds and publishes Lambda container image, then updates the function"
-
-  service_role  = aws_iam_role.codebuild.arn
-  artifacts {
-    type = "NO_ARTIFACTS"
-  }
-
-  environment {
-    compute_type                = "BUILD_GENERAL1_SMALL"
-    image                       = "aws/codebuild/standard:7.0"
-    type                        = "LINUX_CONTAINER"
-    privileged_mode             = true  # needed for Docker build
-    environment_variable {
-      name  = "ECR_REPO"
-      value = var.ecr_repository_name
-    }
-    environment_variable {
-      name  = "LAMBDA_NAME"
-      value = var.lambda_function_name
-    }
-    environment_variable {
-      name  = "AWS_ACCOUNT_ID"
-      value = data.aws_caller_identity.current.account_id
-    }
-  }
-
-  source {
-    type            = "GITHUB"
-    location        = "https://github.com/${var.github_owner}/${var.github_repo}.git"
-    git_clone_depth = 1
-    buildspec       = "lambda/buildspec.yml"
-  }
-
-  logs_config {
-    cloudwatch_logs {
-      group_name = "/aws/codebuild/${local.name_prefix}"
-      stream_name = "build"
-    }
-  }
-}
-
-############################################################
 # IAM ROLE FOR CODEPIPELINE
 ############################################################
 resource "aws_iam_role" "codepipeline" {
@@ -241,19 +116,39 @@ resource "aws_codepipeline" "pipeline" {
 
   stage {
     name = "Build"
+
     action {
-      name            = "BuildAndUpdateLambda"
-      category        = "Build"
-      owner           = "AWS"
-      provider        = "CodeBuild"
-      version         = "1"
-      input_artifacts = ["source_output"]
+      name             = "BuildAndPushImage"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "ECRBuildAndPublish"
+      input_artifacts  = ["source_output"]
+      output_artifacts = []
+      version          = "1"
 
       configuration = {
-        ProjectName = aws_codebuild_project.image_processor.name
+        "ECRRepositoryName": var.ecr_repository_name
+        "ImageTags": "latest, ${var.environment}-${var.github_branch}"
       }
     }
   }
+
+  # stage {
+  #   name = "Deploy"
+
+  #   action {
+  #     name            = "DeployToLambda"
+  #     category        = "Deploy"
+  #     owner           = "AWS"
+  #     provider        = "Lambda"
+  #     input_artifacts  = ["source_output"]
+  #     version         = "1"
+
+  #     configuration = {
+  #       LambdaFunctionName = var.lambda_function_name
+  #     }
+  #   }
+  # }
 
   tags = {
     Environment = var.environment
