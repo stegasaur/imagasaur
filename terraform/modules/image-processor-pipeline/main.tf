@@ -23,62 +23,33 @@ resource "aws_iam_role" "codebuild" {
   })
 }
 
-resource "aws_iam_role_policy" "codebuild" {
-  name   = "${local.name_prefix}-codebuild-policy"
-  role   = aws_iam_role.codebuild.id
+resource "aws_iam_role_policy" "codebuild_ecr" {
+  name = "${local.name_prefix}-codebuild-ecr"
+  role = aws_iam_role.codebuild.id
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      # ECR permissions (repository-scoped)
       {
-        Effect   = "Allow",
-        Action   = [
-          "ecr:BatchGetImage",
+        Effect = "Allow",
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
           "ecr:CompleteLayerUpload",
           "ecr:GetDownloadUrlForLayer",
           "ecr:InitiateLayerUpload",
           "ecr:PutImage",
-          "ecr:UploadLayerPart"
+          "ecr:UploadLayerPart",
+          "ecr:BatchGetImage",
+          "ecr:DescribeRepositories"
         ],
         Resource = var.ecr_repository_arn
-      },
-      # ECR auth token (account-wide)
-      {
-        Effect   = "Allow",
-        Action   = ["ecr:GetAuthorizationToken"],
-        Resource = "*"
-      },
-      # S3 artifacts bucket access
-      {
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:GetObjectVersion",
-          "s3:GetBucketVersioning"
-        ],
-        Resource = [
-          local.shared_artifacts_arn,
-          "${local.shared_artifacts_arn}/*"
-        ]
-      },
-      # CloudWatch Logs
-      {
-        Effect   = "Allow",
-        Action   = ["logs:CreateLogGroup"],
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:*"
-      },
-      {
-        Effect   = "Allow",
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"],
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codebuild/${local.name_prefix}:log-stream:*"
-      },
-      # Lambda update permission (scoped)
-      {
-        Effect   = "Allow",
-        Action   = ["lambda:UpdateFunctionCode"],
-        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.lambda_function_name}"
       }
     ]
   })
@@ -235,6 +206,7 @@ resource "aws_codepipeline" "pipeline" {
         ConnectionArn    = var.codestar_connection_arn
         FullRepositoryId = "${var.github_owner}/${var.github_repo}"
         BranchName       = var.github_branch
+        DetectChanges    = "true"
       }
     }
   }
