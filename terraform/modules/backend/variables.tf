@@ -43,3 +43,10 @@ variable "certificate_arn" {
   description = "ARN of the certificate for the domain"
   type        = string
 }
+
+variable "root_domain" {
+  type        = string
+  description = "Root domain for the application, e.g., example.com"
+  default     = "explodeme.com"
+
+}

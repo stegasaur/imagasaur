@@ -186,7 +186,7 @@ resource "aws_lb_listener_rule" "https_frontend" {
 
   condition {
     host_header {
-      values = ["www.imagasaur.com", "api.imagasaur.com"]
+      values = ["www.${var.project_name}.${var.root_domain}", "api.${var.project_name}.${var.root_domain}"]
     }
   }
 }

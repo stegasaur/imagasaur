@@ -110,8 +110,9 @@ resource "aws_cloudfront_response_headers_policy" "cors" {
     origin_override = true
     access_control_allow_origins {
       items = [
-        "https://www.imagasaur.com",
-        "https://api.imagasaur.com"
+        "https://${var.domain_name}",
+        "https://${var.project_name}.${var.root_domain}",
+        "https://${var.api_domain_name}",
       ]
     }
     access_control_allow_headers {

@@ -54,3 +54,9 @@ variable "api_domain_name" {
   description = "Domain name for the API"
   type        = string
 }
+
+variable "root_domain" {
+  type        = string
+  description = "Root domain for the application, e.g., example.com"
+  default     = "explodeme.com"
+}

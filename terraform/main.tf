@@ -23,13 +23,13 @@ locals {
 
 # Route53 Hosted Zone
 data "aws_route53_zone" "main" {
-  name = "imagasaur.com"
+  name = var.root_domain
 }
 
 # DNS Record for frontend
 resource "aws_route53_record" "frontend" {
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = "www.imagasaur.com"
+  name    = "www.${var.project_name}.${var.root_domain}"
   type    = "A"
 
   alias {
@@ -42,7 +42,7 @@ resource "aws_route53_record" "frontend" {
 # DNS Record for backend
 resource "aws_route53_record" "backend" {
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = "api.imagasaur.com"
+  name    = "api.${var.project_name}.${var.root_domain}"
   type    = "A"
 
   alias {
@@ -58,9 +58,9 @@ resource "aws_route53_record" "backend" {
 
 # Wildcard certificate for all subdomains
 resource "aws_acm_certificate" "wildcard" {
-  domain_name = "*.imagasaur.com"
+  domain_name = "*.${var.project_name}.${var.root_domain}"
   validation_method = "DNS"
-  subject_alternative_names = ["imagasaur.com", "www.imagasaur.com", "api.imagasaur.com"]
+  subject_alternative_names = ["${var.project_name}.${var.root_domain}", "www.${var.project_name}.${var.root_domain}", "api.${var.project_name}.${var.root_domain}"]
 }
 
 # DNS Record for certificate validation
@@ -288,23 +288,23 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# Outputs
-output "frontend_url" {
-  value = module.frontend.frontend_cloudfront_distribution_domain_name
-}
+# # Outputs
+# output "frontend_url" {
+#   value = module.frontend.frontend_cloudfront_distribution_domain_name
+# }
 
 
-output "uploads_bucket" {
-  value = aws_s3_bucket.uploads.bucket
-}
+# output "uploads_bucket" {
+#   value = aws_s3_bucket.uploads.bucket
+# }
 
-output "processed_bucket" {
-  value = aws_s3_bucket.processed.bucket
-}
+# output "processed_bucket" {
+#   value = aws_s3_bucket.processed.bucket
+# }
 
-output "lambda_ecr_repository_url" {
-  value = aws_ecr_repository.lambda.repository_url
-}
+# output "lambda_ecr_repository_url" {
+#   value = aws_ecr_repository.lambda.repository_url
+# }
 
 module "frontend" {
   source = "./modules/frontend"
@@ -317,8 +317,9 @@ module "frontend" {
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
   shared_artifacts_bucket_id  = aws_s3_bucket.codepipeline_artifacts.id
   certificate_arn = aws_acm_certificate.wildcard.arn
-  domain_name = "www.imagasaur.com"
-  api_domain_name = "api.imagasaur.com"
+  domain_name = "www.${var.project_name}.${var.root_domain}"
+  api_domain_name = "api.${var.project_name}.${var.root_domain}"
+  root_domain = var.root_domain
 }
 
 # -----------------------------------------------------------------------------
@@ -355,6 +356,8 @@ module "backend" {
   public_subnet_ids   = module.vpc.public_subnet_ids
 
   certificate_arn = aws_acm_certificate.wildcard.arn
+
+  root_domain = var.root_domain
 }
 
 module "backend_pipeline" {

@@ -13,5 +13,11 @@ variable "project_name" {
 variable "aws_profile" {
   description = "AWS profile to use"
   type        = string
-  default     = "stegasaur"
+  default     = "cwg"
+}
+
+variable "root_domain" {
+  type = string
+  description = "Root domain for the application, e.g., example.com"
+  default = "explodeme.com"
 }

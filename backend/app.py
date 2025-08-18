@@ -14,7 +14,7 @@ app = Flask(__name__)
 CORS(app)
 
 # configure cors
-CORS(app, origins=["https://www.imagasaur.com", "https://api.imagasaur.com", "http://localhost:3000"])
+CORS(app, origins=["https://www.imagasaur.com", "https://api.imagasaur.com", "http://localhost:3000", "https://www.imagasaur.explodeme.com", "https://api.imagasaur.explodeme.com"])
 
 
 # Configure AWS
