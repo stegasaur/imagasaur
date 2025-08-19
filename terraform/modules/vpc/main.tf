@@ -130,36 +130,36 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
 }
 
 # ECR API endpoint
-# resource "aws_vpc_endpoint" "ecr_api" {
-#   vpc_id            = aws_vpc.main.id
-#   service_name      = "com.amazonaws.${var.region}.ecr.api"
-#   vpc_endpoint_type = "Interface"
-#   subnet_ids        = aws_subnet.private[*].id
-#   security_group_ids = [aws_security_group.vpc_endpoint.id]
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ecr.api"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
 
-#   private_dns_enabled = true
+  private_dns_enabled = true
 
-#   tags = {
-#     Name        = "${var.vpc_name}-ecr-api-endpoint"
-#     Environment = var.environment
-#   }
-# }
+  tags = {
+    Name        = "${var.vpc_name}-ecr-api-endpoint"
+    Environment = var.environment
+  }
+}
 
 # iam endpoints
-# resource "aws_vpc_endpoint" "iam" {
-#   vpc_id            = aws_vpc.main.id
-#   service_name      = "com.amazonaws.iam"
-#   vpc_endpoint_type = "Interface"
-#   subnet_ids        = aws_subnet.private[*].id
-#   security_group_ids = [aws_security_group.vpc_endpoint.id]
+resource "aws_vpc_endpoint" "iam" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.iam"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
 
-#   private_dns_enabled = true
+  private_dns_enabled = true
 
-#   tags = {
-#     Name        = "${var.vpc_name}-iam-endpoint"
-#     Environment = var.environment
-#   }
-# }
+  tags = {
+    Name        = "${var.vpc_name}-iam-endpoint"
+    Environment = var.environment
+  }
+}
 
 # ssm endpoint
 resource "aws_vpc_endpoint" "ssm" {
@@ -205,6 +205,22 @@ resource "aws_vpc_endpoint" "sts" {
 
   tags = {
     Name        = "${var.vpc_name}-sts-endpoint"
+    Environment = var.environment
+  }
+}
+
+# cloudwatch logs endpoint
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.logs"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
+
+  tags = {
+    Name        = "${var.vpc_name}-cloudwatch-logs-endpoint"
     Environment = var.environment
   }
 }

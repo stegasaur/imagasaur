@@ -197,6 +197,7 @@ resource "aws_lambda_function" "image_processor" {
   memory_size     = 256
 
   logging_config {
+    log_group = aws_cloudwatch_log_group.lambda.name
     log_format = "JSON"
   }
 
@@ -205,6 +206,12 @@ resource "aws_lambda_function" "image_processor" {
       PROCESSED_BUCKET = aws_s3_bucket.processed.bucket
     }
   }
+}
+
+# cloudwatch group for lambda
+resource "aws_cloudwatch_log_group" "lambda" {
+  name              = "/aws/lambda/image_processor"
+  retention_in_days = 1
 }
 
 # S3 trigger for Lambda function
